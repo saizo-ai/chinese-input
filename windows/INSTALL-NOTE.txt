@@ -1,0 +1,23 @@
+直拼 ZhiPin — 安装后启用方法 / How to enable after installing
+
+中文：
+1. 打开 设置 → 时间和语言 → 语言和区域。
+2. 确保已添加「中文(简体，中国)」语言；若没有，点击「添加语言」。
+3. 在「中文(简体，中国)」→ 语言选项 → 键盘 中，点击「添加键盘」，选择「直拼 ZhiPin」。
+4. 使用 Win+空格 切换到 直拼 ZhiPin。
+5. 输入时：按住不放输入拼音；Shift 单击切换中/英文；数字 1-9 选词；
+   空格选中高亮候选；回车上屏原始拼音；-/= 翻页；Ctrl+Delete 永久删除自造词（带 ★ 的候选）。
+
+English:
+1. Open Settings -> Time & Language -> Language & region.
+2. Make sure "Chinese (Simplified, China)" is in your language list; add it if not.
+3. Under Chinese (Simplified, China) -> Language options -> Keyboards, click
+   "Add a keyboard" and pick "直拼 ZhiPin".
+4. Switch to it with Win+Space.
+5. Typing: pinyin letters compose; tap Shift alone to toggle Chinese/English;
+   digits 1-9 pick a candidate; Space commits the highlighted one; Enter
+   commits the raw pinyin; -/= page; Ctrl+Delete permanently deletes a learned
+   phrase (candidates marked with a ★).
+
+Your learned phrases are stored in %APPDATA%\ZhiPin\user_dict.tsv and are
+never uploaded anywhere. Uninstalling keeps that file.

@@ -44,7 +44,7 @@ jobs:
         run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows\installer.iss'
       - name: Stable asset name
         shell: bash
-        run: cp windows/dist/ZhiPin-*-setup.exe ZhiPin-windows-setup.exe
+        run: cp windows/dist/ZhiPin-Setup-*.exe ZhiPin-windows-setup.exe
       - uses: actions/upload-artifact@v4
         with:
           name: ZhiPin-windows

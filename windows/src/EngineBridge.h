@@ -1,7 +1,9 @@
 // Process-wide singleton around ime::Engine plus UTF conversion helpers.
 #pragma once
 
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 
 #include <string>

@@ -1,7 +1,9 @@
 // Borderless topmost popup listing up to 9 candidates per page, GDI-drawn.
 #pragma once
 
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 
 #include <string>

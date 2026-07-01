@@ -54,6 +54,12 @@
 				<string>smSimpChinese</string>
 				<key>tsInputModeMenuTitleKey</key>
 				<string>直拼</string>
+				<key>tsInputModeMenuIconFileKey</key>
+				<string>menuicon.png</string>
+				<key>tsInputModePaletteIconKey</key>
+				<string>menuicon.png</string>
+				<key>tsInputModeAlternateMenuIconFileKey</key>
+				<string>menuicon.png</string>
 			</dict>
 		</dict>
 	</dict>

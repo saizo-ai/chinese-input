@@ -28,6 +28,7 @@ app: core $(DICT) $(SWIFT_SRCS) ZhiPin/Info.plist
 	    -o $(APP)/Contents/MacOS/ZhiPin
 	cp ZhiPin/Info.plist $(APP)/Contents/Info.plist
 	cp $(DICT) $(APP)/Contents/Resources/dict.tsv
+	cp ZhiPin/menuicon.png ZhiPin/menuicon@2x.png $(APP)/Contents/Resources/
 	codesign --force --sign - $(APP)
 
 pkg: app
