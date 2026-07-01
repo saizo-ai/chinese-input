@@ -1,0 +1,24 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  core-tests:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache dictionary sources
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: dict-raw-v1
+      - name: Build dictionary
+        run: |
+          [ -f data/raw/jieba_dict.txt ] || ./data/fetch.sh
+          python3 data/build_dict.py
+      - name: Engine tests
+        run: make -C core -j test
+      - name: Build macOS app
+        run: make -C macos app

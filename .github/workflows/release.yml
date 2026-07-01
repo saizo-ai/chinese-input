@@ -1,0 +1,65 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build dictionary
+        run: |
+          ./data/fetch.sh
+          python3 data/build_dict.py
+      - name: Engine tests
+        run: make -C core -j test
+      - name: Build pkg
+        run: |
+          make -C macos pkg
+          cp macos/build/ZhiPin-*-macos.pkg ZhiPin-macos.pkg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZhiPin-macos
+          path: ZhiPin-macos.pkg
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build dictionary
+        shell: bash
+        run: |
+          ./data/fetch.sh
+          python3 data/build_dict.py
+      - name: Build DLL
+        run: |
+          cmake -S windows -B windows/build -A x64
+          cmake --build windows/build --config Release
+      - name: Build installer
+        shell: cmd
+        run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" windows\installer.iss'
+      - name: Stable asset name
+        shell: bash
+        run: cp windows/dist/ZhiPin-*-setup.exe ZhiPin-windows-setup.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZhiPin-windows
+          path: ZhiPin-windows-setup.exe
+
+  release:
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ZhiPin-macos.pkg
+            ZhiPin-windows-setup.exe
+          generate_release_notes: true

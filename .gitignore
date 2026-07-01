@@ -1,0 +1,7 @@
+core/build/
+macos/build/
+windows/build/
+windows/dist/
+data/raw/
+data/dict.tsv
+.DS_Store

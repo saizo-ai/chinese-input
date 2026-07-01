@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>直拼 ZhiPin — 所输即所得的拼音输入法</title>
+<style>
+  :root { --fg:#1a1a1a; --muted:#666; --accent:#c0392b; --bg:#faf9f7; --card:#fff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#eee; --muted:#9a9a9a; --accent:#e74c3c; --bg:#141414; --card:#1f1f1f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+         color:var(--fg); background:var(--bg); line-height:1.6; }
+  main { max-width:720px; margin:0 auto; padding:48px 24px; }
+  h1 { font-size:44px; margin:0; }
+  h1 .en { font-size:22px; color:var(--muted); font-weight:400; margin-left:8px; }
+  .tagline { color:var(--muted); font-size:18px; margin:8px 0 32px; }
+  .buttons { display:flex; gap:16px; flex-wrap:wrap; margin:32px 0; }
+  .btn { display:block; padding:14px 28px; border-radius:10px; text-decoration:none;
+         background:var(--accent); color:#fff; font-size:17px; }
+  .btn small { display:block; font-size:12px; opacity:.85; }
+  .card { background:var(--card); border-radius:12px; padding:20px 24px; margin:16px 0;
+          box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .card h2 { font-size:18px; margin:0 0 8px; }
+  kbd { background:rgba(128,128,128,.15); border-radius:4px; padding:1px 6px;
+        font-family:ui-monospace,monospace; font-size:13px; }
+  ul { padding-left:20px; margin:8px 0; }
+  footer { color:var(--muted); font-size:13px; margin-top:40px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>直拼<span class="en">ZhiPin</span></h1>
+  <p class="tagline">所输即所得的拼音输入法 — 不模糊、不猜测、尊重你敲下的每一个字母。</p>
+
+  <div class="buttons">
+    <a class="btn" href="https://github.com/omnific9/chinese-input/releases/latest/download/ZhiPin-macos.pkg">
+      下载 macOS 版<small>ZhiPin-macos.pkg · Apple Silicon &amp; Intel</small></a>
+    <a class="btn" href="https://github.com/omnific9/chinese-input/releases/latest/download/ZhiPin-windows-setup.exe">
+      下载 Windows 版<small>ZhiPin-windows-setup.exe · 64 位</small></a>
+  </div>
+
+  <div class="card">
+    <h2>特点</h2>
+    <ul>
+      <li>精确匹配：无模糊音（zh ≠ z），拼错就不出字</li>
+      <li>整句输入：一次最多 10 个汉字，基于 46 万条词库转换</li>
+      <li>末字补全：链式输入中只补全正在敲的那一个字，绝不多猜</li>
+      <li>自造词组：你选过的组合保存在本机，下次同样拼音直接置顶（标 ★）；
+          <kbd>⌃⌫</kbd> / <kbd>Ctrl+Del</kbd> 可永久删除</li>
+      <li><kbd>Shift</kbd> 单击切换中 / 英文</li>
+      <li>完全离线，词库与自造词只存在你的电脑上</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>macOS 安装</h2>
+    <ul>
+      <li>双击 pkg 安装（未签名：如被拦截，在「系统设置 → 隐私与安全性」中点“仍要打开”）</li>
+      <li>系统设置 → 键盘 → 输入法 → 编辑 → <b>+</b> → 简体中文 → <b>直拼</b></li>
+      <li>如列表中未出现，注销并重新登录一次</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Windows 安装</h2>
+    <ul>
+      <li>运行安装程序（SmartScreen 提示时选择“仍要运行”）</li>
+      <li>确保已添加「中文(简体，中国)」语言，输入法列表中选择 <b>直拼 ZhiPin</b></li>
+      <li><kbd>Win+空格</kbd> 切换到直拼</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>按键</h2>
+    <ul>
+      <li><kbd>1–9</kbd> 选字 · <kbd>空格</kbd> 选中当前高亮 · <kbd>回车</kbd> 上屏原始字母</li>
+      <li><kbd>-</kbd>/<kbd>=</kbd> 或 <kbd>PgUp</kbd>/<kbd>PgDn</kbd> 翻页 · <kbd>↑</kbd>/<kbd>↓</kbd> 移动高亮</li>
+      <li><kbd>'</kbd> 手动切分音节（xi'an → 西安）</li>
+    </ul>
+  </div>
+
+  <footer>
+    开源项目：<a href="https://github.com/omnific9/chinese-input">github.com/omnific9/chinese-input</a> ·
+    词库数据来自 <a href="https://github.com/fxsjy/jieba">jieba</a>、
+    <a href="https://github.com/mozillazg/pinyin-data">pinyin-data</a>、
+    <a href="https://github.com/mozillazg/phrase-pinyin-data">phrase-pinyin-data</a>（MIT）
+  </footer>
+</main>
+</body>
+</html>
