@@ -328,9 +328,16 @@ void CZhiPinTextService::_SelectCandidate(ITfContext* pic, int index) {
     _UpdateCandidateUI();
 }
 
-void CZhiPinTextService::_ForgetHighlighted(ITfContext* pic) {
-    if (_highlight < 0 || _highlight >= (int)_cands.size()) return;
-    const CandItem& c = _cands[_highlight];
+void CZhiPinTextService::_ForgetHighlighted(ITfContext*) {
+    _ForgetAt(_highlight);
+}
+
+// Deleting a learned phrase never changes the composition text (pending +
+// segmented pinyin stay as-is), so no edit session is needed here — safe to
+// call from the candidate window's mouse handler too.
+void CZhiPinTextService::_ForgetAt(int index) {
+    if (!_IsComposing() || index < 0 || index >= (int)_cands.size()) return;
+    const CandItem& c = _cands[index];
     if (!c.user) {
         MessageBeep(MB_OK);
         return;
@@ -339,7 +346,6 @@ void CZhiPinTextService::_ForgetHighlighted(ITfContext* pic) {
     _Requery();
     if (_highlight >= (int)_cands.size()) _highlight = _cands.empty() ? 0 : (int)_cands.size() - 1;
     _pageStart = (_highlight / CCandidateWindow::kPageSize) * CCandidateWindow::kPageSize;
-    _UpdateComposition(pic);
     _UpdateCandidateUI();
 }
 

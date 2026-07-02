@@ -18,6 +18,8 @@ class ZhiPinInputController: IMKInputController {
     private var page = 0
     private var highlight = 0
     private var shiftPending = false
+    // Retained for panel mouse events, which arrive outside handle(_:client:).
+    private weak var lastClient: AnyObject?
 
     private var consumedTotal: Int { chain.reduce(0) { $0 + $1.consumed } }
     private var remaining: String { String(originalRaw.dropFirst(consumedTotal)) }
@@ -32,6 +34,7 @@ class ZhiPinInputController: IMKInputController {
 
     override func handle(_ event: NSEvent!, client sender: Any!) -> Bool {
         guard let event = event, let client = sender as? IMKTextInput else { return false }
+        lastClient = sender as AnyObject
 
         if event.type == .flagsChanged {
             return handleFlagsChanged(event, client: client)
@@ -193,6 +196,11 @@ class ZhiPinInputController: IMKInputController {
         }
         let start = page * CandidatePanel.pageSize
         let items = Array(result.candidates.dropFirst(start).prefix(CandidatePanel.pageSize))
+        CandidatePanel.shared.onDelete = { [weak self] pageIndex in
+            guard let self, let client = self.lastClient as? IMKTextInput else { return }
+            self.forgetCandidate(at: self.page * CandidatePanel.pageSize + pageIndex,
+                                 client: client)
+        }
         CandidatePanel.shared.show(
             items: items, highlight: highlight, pageNumber: page,
             hasMorePages: result.candidates.count > start + items.count,
@@ -218,10 +226,12 @@ class ZhiPinInputController: IMKInputController {
     }
 
     private func forgetHighlighted(client: IMKTextInput) {
-        let index = page * CandidatePanel.pageSize + highlight
-        guard result.candidates.indices.contains(index), result.candidates[index].user else {
-            return
-        }
+        forgetCandidate(at: page * CandidatePanel.pageSize + highlight, client: client)
+    }
+
+    private func forgetCandidate(at index: Int, client: IMKTextInput) {
+        guard composing, result.candidates.indices.contains(index),
+              result.candidates[index].user else { return }
         Engine.shared.forget(raw: remaining, text: result.candidates[index].text)
         refresh(client: client)
     }

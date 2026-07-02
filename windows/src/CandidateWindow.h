@@ -6,7 +6,9 @@
 #endif
 #include <windows.h>
 
+#include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 
 struct CandItem {
@@ -19,6 +21,10 @@ struct CandItem {
 class CCandidateWindow {
 public:
     static constexpr int kPageSize = 9;
+
+    // Invoked with the absolute candidate index when the user clicks the ✕
+    // button next to a learned (★) entry.
+    std::function<void(int)> onDeleteUserEntry;
 
     ~CCandidateWindow() { Destroy(); }
 
@@ -44,4 +50,5 @@ private:
     const std::vector<CandItem>* _items = nullptr;
     int _pageStart = 0;
     int _highlight = 0;
+    std::vector<std::pair<RECT, int>> _deleteRects;  // ✕ hit areas, rebuilt on paint
 };

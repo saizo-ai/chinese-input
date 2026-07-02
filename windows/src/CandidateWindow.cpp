@@ -7,7 +7,8 @@
 namespace {
 
 const WCHAR kClassName[] = L"ZhiPinCandidateWindow";
-const WCHAR kFooter[] = L"空格:选定  -/=:翻页  回车:原文  Ctrl+Del:删除自造词";
+const WCHAR kFooter[] = L"空格:选定  -/=:翻页  回车:原文  ✕/Ctrl+Del:删除自造词";
+const WCHAR kDeleteMark[] = L"\x2715";  // ✕
 
 constexpr int kPadX = 10;
 constexpr int kPadY = 6;
@@ -43,6 +44,19 @@ LRESULT CALLBACK CCandidateWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, L
         }
         case WM_MOUSEACTIVATE:
             return MA_NOACTIVATE;
+        case WM_LBUTTONDOWN: {
+            if (!self) return 0;
+            POINT pt = {(SHORT)LOWORD(lParam), (SHORT)HIWORD(lParam)};
+            for (const auto& hit : self->_deleteRects) {
+                RECT r = hit.first;
+                InflateRect(&r, 4, 4);
+                if (PtInRect(&r, pt)) {
+                    if (self->onDeleteUserEntry) self->onDeleteUserEntry(hit.second);
+                    return 0;
+                }
+            }
+            return 0;
+        }
         case WM_ERASEBKGND:
             return 1;
     }
@@ -127,6 +141,18 @@ SIZE CCandidateWindow::_Measure(HDC hdc, std::vector<std::wstring>& lines) const
         width = std::max(width, sz.cx);
         lineH = std::max(lineH, sz.cy);
     }
+    // Room for the ✕ delete column when any visible row is a learned entry.
+    if (_items) {
+        int end = std::min<int>((int)_items->size(), _pageStart + kPageSize);
+        for (int i = _pageStart; i < end; ++i) {
+            if ((*_items)[i].user) {
+                SIZE dsz = {};
+                GetTextExtentPoint32W(hdc, kDeleteMark, 1, &dsz);
+                width += dsz.cx + kPadX * 2;
+                break;
+            }
+        }
+    }
     SelectObject(hdc, _footerFont);
     SIZE fsz = {};
     GetTextExtentPoint32W(hdc, kFooter, (int)wcslen(kFooter), &fsz);
@@ -141,6 +167,7 @@ SIZE CCandidateWindow::_Measure(HDC hdc, std::vector<std::wstring>& lines) const
 }
 
 void CCandidateWindow::_Paint(HDC hdc) {
+    _deleteRects.clear();
     RECT rc;
     GetClientRect(_hwnd, &rc);
     HBRUSH bg = CreateSolidBrush(kBg);
@@ -174,6 +201,15 @@ void CCandidateWindow::_Paint(HDC hdc) {
             }
             SetTextColor(hdc, it.user ? kStarColor : kTextColor);
             TextOutW(hdc, kPadX, y, line.c_str(), (int)line.size());
+            if (it.user) {
+                SIZE dsz = {};
+                GetTextExtentPoint32W(hdc, kDeleteMark, 1, &dsz);
+                int dx = rc.right - kPadX - dsz.cx;
+                SetTextColor(hdc, kFooterColor);
+                TextOutW(hdc, dx, y, kDeleteMark, 1);
+                RECT dr = {dx, y, dx + dsz.cx, y + dsz.cy};
+                _deleteRects.emplace_back(dr, i);
+            }
             y += lineH + kLineGap;
         }
         SelectObject(hdc, _footerFont);

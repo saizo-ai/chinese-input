@@ -90,6 +90,7 @@ private:
     void _CommitRaw(ITfContext* pic);                 // pending + raw ascii, no learn
     void _SelectCandidate(ITfContext* pic, int index);  // digit/space selection
     void _ForgetHighlighted(ITfContext* pic);
+    void _ForgetAt(int index);  // shared by Ctrl+Del and the ✕ button
     void _Requery();
     void _ResetState();
 

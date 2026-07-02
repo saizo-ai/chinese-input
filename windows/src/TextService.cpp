@@ -65,6 +65,7 @@ STDMETHODIMP CZhiPinTextService::ActivateEx(ITfThreadMgr* ptim, TfClientId tid, 
         return E_FAIL;
     }
     _candWindow.Create();
+    _candWindow.onDeleteUserEntry = [this](int index) { _ForgetAt(index); };
     return S_OK;
 }
 

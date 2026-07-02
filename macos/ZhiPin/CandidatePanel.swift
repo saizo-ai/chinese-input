@@ -1,10 +1,17 @@
 import Cocoa
 
 /// Custom candidate window. IMKCandidates cannot mark user phrases or handle a
-/// delete shortcut, so we draw our own.
+/// delete shortcut/button, so we draw our own.
 final class CandidatePanel {
     static let shared = CandidatePanel()
     static let pageSize = 9
+
+    /// Called with the index *within the current page* when the user clicks
+    /// the ✕ button on a learned (★) candidate.
+    var onDelete: ((Int) -> Void)? {
+        get { view.onDelete }
+        set { view.onDelete = newValue }
+    }
 
     private let panel: NSPanel
     private let view: CandidateView
@@ -51,17 +58,22 @@ final class CandidatePanel {
 }
 
 private final class CandidateView: NSView {
+    var onDelete: ((Int) -> Void)?
+
     private var items: [Engine.Candidate] = []
     private var highlight = 0
     private var pageNumber = 0
     private var hasMorePages = false
+    private var deleteRects: [(rect: NSRect, index: Int)] = []
 
     private let candidateFont = NSFont.systemFont(ofSize: 16)
     private let labelFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
     private let hintFont = NSFont.systemFont(ofSize: 10)
+    private let deleteFont = NSFont.systemFont(ofSize: 11, weight: .semibold)
     private let rowHeight: CGFloat = 24
     private let padding: CGFloat = 8
     private let hintHeight: CGFloat = 16
+    private let deleteColumnWidth: CGFloat = 22
 
     func update(items: [Engine.Candidate], highlight: Int, pageNumber: Int, hasMorePages: Bool) {
         self.items = items
@@ -69,6 +81,16 @@ private final class CandidateView: NSView {
         self.pageNumber = pageNumber
         self.hasMorePages = hasMorePages
         needsDisplay = true
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        let p = convert(event.locationInWindow, from: nil)
+        for (rect, index) in deleteRects where rect.insetBy(dx: -4, dy: -4).contains(p) {
+            onDelete?(index)
+            return
+        }
     }
 
     private func rowText(_ i: Int) -> NSAttributedString {
@@ -88,26 +110,30 @@ private final class CandidateView: NSView {
         return s
     }
 
+    private var hasUserItems: Bool { items.contains { $0.user } }
+
     func desiredSize() -> NSSize {
         var width: CGFloat = 120
         for i in items.indices {
             width = max(width, rowText(i).size().width + padding * 2 + 8)
         }
         width = max(width, footerText().size().width + padding * 2)
+        if hasUserItems { width += deleteColumnWidth }
         let height = CGFloat(items.count) * rowHeight + hintHeight + padding * 2
-        return NSSize(width: min(width, 420), height: height)
+        return NSSize(width: min(width, 440), height: height)
     }
 
     private func footerText() -> NSAttributedString {
         var hint = "⇧ 中/英"
         if hasMorePages || pageNumber > 0 { hint += "   -/= 翻页(\(pageNumber + 1))" }
-        if items.indices.contains(highlight), items[highlight].user { hint += "   ⌃⌫ 删除自造词" }
+        if hasUserItems { hint += "   ✕/⌃⌫ 删除自造词" }
         return NSAttributedString(string: hint, attributes: [
             .font: hintFont, .foregroundColor: NSColor.tertiaryLabelColor,
         ])
     }
 
     override func draw(_ dirtyRect: NSRect) {
+        deleteRects.removeAll()
         let bg = NSBezierPath(roundedRect: bounds, xRadius: 8, yRadius: 8)
         NSColor.windowBackgroundColor.setFill()
         bg.fill()
@@ -127,6 +153,17 @@ private final class CandidateView: NSView {
             let text = rowText(i)
             let ts = text.size()
             text.draw(at: NSPoint(x: padding, y: y + (rowHeight - ts.height) / 2))
+
+            if items[i].user {
+                let mark = NSAttributedString(string: "✕", attributes: [
+                    .font: deleteFont, .foregroundColor: NSColor.secondaryLabelColor,
+                ])
+                let ms = mark.size()
+                let origin = NSPoint(x: bounds.width - padding - ms.width,
+                                     y: y + (rowHeight - ms.height) / 2)
+                mark.draw(at: origin)
+                deleteRects.append((NSRect(origin: origin, size: ms), i))
+            }
             y -= rowHeight
         }
         footerText().draw(at: NSPoint(x: padding, y: padding / 2))
