@@ -133,6 +133,15 @@ int main(int argc, char** argv) {
             if (c.text == "中国" && c.consumed == 8) ok = true;
         CHECK(ok, "partial candidate 中国 consumes 8 of zhongguoren");
     }
+    // Probability ranking: P(中国人) beats P(中国)*P(best rest), and a partial
+    // word's rank reflects the probability of the whole reading it starts.
+    {
+        auto r = eng.query("zhongguoren");
+        int whole = indexOf(r, "中国人");
+        int part = indexOf(r, "中国");
+        CHECK(whole >= 0 && part >= 0 && whole < part,
+              "中国人 ranks above 中国 for zhongguoren");
+    }
 
     std::remove(userPath.c_str());
     if (failures == 0) std::printf("all tests passed\n");

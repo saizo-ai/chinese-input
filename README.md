@@ -7,6 +7,10 @@ A pinyin input method for macOS and Windows that respects exactly what you type.
   letters back.
 - **Word & sentence conversion** — up to 10 characters per composition,
   converted over a ~465k-entry dictionary with corpus frequencies.
+- **Probability-ranked candidates** — every candidate is scored by
+  log P(candidate) + log P(best reading of the rest of your input) over a
+  unigram word lattice, recomputed at each step of a chained composition. A
+  longer word outranks a shorter one only when the probabilities say so.
 - **Single-character completion** — while typing a chain, only the syllable
   currently being typed is completed (`zhongg` → 中国). Never predicts extra
   characters beyond what you typed.

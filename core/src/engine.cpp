@@ -241,6 +241,41 @@ struct Engine::Impl {
         return false;
     }
 
+    // Best remaining-path log-probability from each letter position to the end
+    // of the input. suffix[p] answers: "if a candidate consumes letters [0,p),
+    // how probable is the best reading of what's left?" Candidates are ranked
+    // by log P(candidate) + suffix[end], so a short word only outranks a long
+    // one when the probabilities actually say so.
+    std::vector<double> suffixScores(const ParsedInput& in) const {
+        constexpr double kNeg = -1e18;
+        int n = static_cast<int>(in.letters.size());
+        std::vector<double> suf(n + 1, kNeg);
+        if (!in.lastIncomplete) suf[n] = 0;
+        std::vector<SpanMatch> matches;
+        for (int p = n - 1; p >= 0; --p) {
+            // The remainder may be one partially-typed syllable: its edge
+            // weight is the best same-length completion (never more chars).
+            if (in.lastIncomplete && n - p <= syls.maxLen && in.spanAllowed(p, n)) {
+                std::string r = in.letters.substr(p);
+                if (syls.isPrefix(r)) {
+                    std::vector<const DictRec*> comps;
+                    completions(r, 1, comps);
+                    double best = kNeg;
+                    for (const DictRec* c : comps)
+                        best = std::max(best, static_cast<double>(c->logw));
+                    if (best > kNeg / 2) suf[p] = std::max(suf[p], best - logTotal);
+                }
+            }
+            matches.clear();
+            wordsFrom(in, p, matches);
+            for (const auto& m : matches) {
+                if (!m.rec || suf[m.end] <= kNeg / 2) continue;
+                suf[p] = std::max(suf[p], m.rec->logw - logTotal + suf[m.end]);
+            }
+        }
+        return suf;
+    }
+
     // Best full conversion via unigram DP over the word lattice.
     // Returns empty string unless the best path uses >= 2 words.
     std::string bestSentence(const ParsedInput& in) const {
@@ -326,25 +361,39 @@ QueryResult Engine::query(const std::string& rawInput, int maxCandidates) const 
     }
 
     // 3. Words starting at the beginning of the input, plus completions of the
-    //    last partially-typed syllable. Longer coverage ranks first.
+    //    last partially-typed syllable. Each candidate is ranked by the
+    //    probability of the best full reading that starts with it:
+    //    log P(candidate) + suffix[end].
     struct Ranked {
         std::string text;
         int consumed;
         bool user;
-        int userRank;  // 0 = dict; higher = stronger user entry
-        float logw;
+        double score;
     };
     std::vector<Ranked> ranked;
+
+    std::vector<double> suf = impl_->suffixScores(in);
+    // Learned entries rank like very common words, growing with use count.
+    constexpr double kUserBaseLogW = 20.0;
+    auto userLogW = [&](long count) {
+        return kUserBaseLogW + std::log2(static_cast<double>(count) + 1.0);
+    };
+    // When the rest of the input has no valid reading, fall back to preferring
+    // longer coverage; keep these below every probability-scored candidate.
+    auto fallbackScore = [](int consumed) { return -1e17 + consumed; };
 
     std::vector<Impl::SpanMatch> matches;
     impl_->wordsFrom(in, 0, matches);
     for (const auto& m : matches) {
         int consumed = in.consumedAt(m.end);
+        double w = m.userEntry ? userLogW(m.userEntry->count)
+                               : static_cast<double>(m.rec->logw);
+        double score = suf[m.end] > -5e17 ? w - impl_->logTotal + suf[m.end]
+                                          : fallbackScore(consumed);
         if (m.userEntry)
-            ranked.push_back({m.userEntry->text, consumed, true,
-                              static_cast<int>(std::min(m.userEntry->count, 1000000L)) + 1, 0});
+            ranked.push_back({m.userEntry->text, consumed, true, score});
         else
-            ranked.push_back({std::string(m.rec->text), consumed, false, 0, m.rec->logw});
+            ranked.push_back({std::string(m.rec->text), consumed, false, score});
     }
 
     if (in.lastIncomplete && !in.segs.empty()) {
@@ -361,21 +410,21 @@ QueryResult Engine::query(const std::string& rawInput, int maxCandidates) const 
         std::vector<const DictRec*> comps;
         impl_->completions(prefix, static_cast<int>(in.segs.size()), comps);
         for (const DictRec* r : comps)
-            ranked.push_back({std::string(r->text), in.rawLen, false, 0, r->logw});
+            ranked.push_back({std::string(r->text), in.rawLen, false,
+                              static_cast<double>(r->logw) - impl_->logTotal});
         // Learned phrases can complete too, with the same syllable-count rule.
         for (const auto& [k, entries] : impl_->userDict) {
             if (!startsWith(k, prefix) || countSyllables(k) != static_cast<int>(in.segs.size()))
                 continue;
             for (const auto& e : entries)
                 ranked.push_back({e.text, in.rawLen, true,
-                                  static_cast<int>(std::min(e.count, 1000000L)) + 1, 0});
+                                  userLogW(e.count) - impl_->logTotal});
         }
     }
 
     std::stable_sort(ranked.begin(), ranked.end(), [](const Ranked& a, const Ranked& b) {
-        if (a.consumed != b.consumed) return a.consumed > b.consumed;
-        if (a.userRank != b.userRank) return a.userRank > b.userRank;
-        return a.logw > b.logw;
+        if (a.score != b.score) return a.score > b.score;
+        return a.consumed > b.consumed;
     });
     for (const auto& r : ranked) {
         if (static_cast<int>(out.size()) >= maxCandidates) break;
