@@ -3,7 +3,7 @@ BUILD := build
 APP := $(BUILD)/ZhiPin.app
 CORE := ../core/build/libime_core.a
 DICT := ../data/dict.tsv
-VERSION := 0.1.3
+VERSION := 0.1.4
 
 SWIFT_SRCS := ZhiPin/main.swift ZhiPin/Engine.swift ZhiPin/InputController.swift \
               ZhiPin/CandidatePanel.swift
@@ -29,6 +29,7 @@ app: core $(DICT) $(SWIFT_SRCS) ZhiPin/Info.plist
 	cp ZhiPin/Info.plist $(APP)/Contents/Info.plist
 	cp $(DICT) $(APP)/Contents/Resources/dict.tsv
 	cp ZhiPin/menuicon.png ZhiPin/menuicon@2x.png $(APP)/Contents/Resources/
+	cp -R ZhiPin/zh-Hans.lproj ZhiPin/en.lproj $(APP)/Contents/Resources/
 	codesign --force --sign - $(APP)
 
 pkg: app
@@ -42,10 +43,19 @@ pkg: app
 
 # Install for the current user (no sudo). Log out/in if the input source
 # doesn't appear in System Settings -> Keyboard -> Input Sources.
+# Fails loudly when the installed copy doesn't match the build (e.g. a
+# root-owned copy left behind by the pkg installer blocks the update).
 install: app
 	-pkill -f 'Input Methods/ZhiPin.app' 2>/dev/null || true
 	rm -rf "$$HOME/Library/Input Methods/ZhiPin.app"
 	cp -R $(APP) "$$HOME/Library/Input Methods/"
+	@cmp -s $(APP)/Contents/MacOS/ZhiPin \
+	    "$$HOME/Library/Input Methods/ZhiPin.app/Contents/MacOS/ZhiPin" || \
+	    { echo "ERROR: installed copy does not match build."; \
+	      echo "A root-owned copy may be blocking it; run:"; \
+	      echo "  sudo rm -rf ~/Library/Input\\ Methods/ZhiPin.app && make -C macos install"; \
+	      exit 1; }
+	@echo "Installed ZhiPin $(VERSION) OK"
 
 uninstall:
 	-pkill -f 'Input Methods/ZhiPin.app' 2>/dev/null || true

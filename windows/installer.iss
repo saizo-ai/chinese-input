@@ -3,7 +3,7 @@
 ; Pass /DAppVersion=x.y.z to override the version.
 
 #ifndef AppVersion
-#define AppVersion "0.1.3"
+#define AppVersion "0.1.4"
 #endif
 
 [Setup]
