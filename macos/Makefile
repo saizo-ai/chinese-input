@@ -45,10 +45,14 @@ pkg: app
 # doesn't appear in System Settings -> Keyboard -> Input Sources.
 # Fails loudly when the installed copy doesn't match the build (e.g. a
 # root-owned copy left behind by the pkg installer blocks the update).
+# Sync contents in place rather than deleting the bundle: removing the app
+# makes macOS prune it from the user's enabled input sources, and re-enabling
+# programmatically is ignored on modern macOS (the user must re-add it in
+# System Settings).
 install: app
 	-pkill -f 'Input Methods/ZhiPin.app' 2>/dev/null || true
-	rm -rf "$$HOME/Library/Input Methods/ZhiPin.app"
-	cp -R $(APP) "$$HOME/Library/Input Methods/"
+	mkdir -p "$$HOME/Library/Input Methods/ZhiPin.app"
+	rsync -a --delete $(APP)/ "$$HOME/Library/Input Methods/ZhiPin.app/"
 	@cmp -s $(APP)/Contents/MacOS/ZhiPin \
 	    "$$HOME/Library/Input Methods/ZhiPin.app/Contents/MacOS/ZhiPin" || \
 	    { echo "ERROR: installed copy does not match build."; \
