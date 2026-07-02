@@ -96,34 +96,34 @@ int main(int argc, char** argv) {
         for (int i = 0; i < 10; ++i) s += "ni";
         CHECK(eng.query(s).valid, "10 syllables accepted");
     }
-    // Learn / rank first / forget permanently.
+    // Adaptive placement: first use ranks just below the best natural
+    // candidate, second use takes the top; forget removes permanently.
+    // The learned text is deliberately NOT the natural best conversion
+    // (that would be 电脑爆炸) so its placement is observable.
     {
-        auto before = eng.query("diannaobaozha");
-        int posBefore = indexOf(before, "电脑爆炸");
-        eng.learn("diannaobaozha", "电脑爆炸");
-        auto after = eng.query("diannaobaozha");
-        CHECK(indexOf(after, "电脑爆炸") == 0, "learned combo ranks first");
-        CHECK(after.candidates[0].user, "learned combo flagged as user entry");
-        eng.forget("diannaobaozha", "电脑爆炸");
-        auto gone = eng.query("diannaobaozha");
-        int posGone = indexOf(gone, "电脑爆炸");
-        CHECK(posGone == posBefore || (posGone >= 0 && !gone.candidates[posGone].user),
-              "forgotten combo no longer a user entry");
+        eng.learn("diannaobaozha", "电闹抱榨");
+        auto once = eng.query("diannaobaozha");
+        int i1 = indexOf(once, "电闹抱榨");
+        CHECK(i1 == 1, "first use ranks second, below the natural best");
+        CHECK(i1 >= 0 && once.candidates[i1].user, "learned combo flagged as user entry");
+        CHECK(indexOf(once, "电脑爆炸") == 0, "natural best stays on top after one use");
+        eng.learn("diannaobaozha", "电闹抱榨");
+        auto twice = eng.query("diannaobaozha");
+        CHECK(indexOf(twice, "电闹抱榨") == 0, "second use takes the top spot");
+        eng.forget("diannaobaozha", "电闹抱榨");
+        CHECK(indexOf(eng.query("diannaobaozha"), "电闹抱榨") < 0,
+              "forgotten combo no longer suggested");
     }
     // Learned phrases persist across engine instances.
     {
-        eng.learn("wodeceshi", "我的测试");
+        eng.learn("wodeceshi", "沃德测试");
+        eng.learn("wodeceshi", "沃德测试");
         ime::Engine eng2(argv[1], userPath);
         auto r = eng2.query("wodeceshi");
-        CHECK(indexOf(r, "我的测试") == 0 && r.candidates[0].user, "user dict persists to disk");
-        eng2.forget("wodeceshi", "我的测试");
+        CHECK(indexOf(r, "沃德测试") == 0 && r.candidates[0].user, "user dict persists to disk");
+        eng2.forget("wodeceshi", "沃德测试");
         ime::Engine eng3(argv[1], userPath);
-        CHECK(!eng3.query("wodeceshi").candidates.empty() ||
-                  indexOf(eng3.query("wodeceshi"), "我的测试") < 0,
-              "forget persists to disk");
-        auto r3 = eng3.query("wodeceshi");
-        int i3 = indexOf(r3, "我的测试");
-        CHECK(i3 < 0 || !r3.candidates[i3].user, "forgotten entry not reloaded");
+        CHECK(indexOf(eng3.query("wodeceshi"), "沃德测试") < 0, "forget persists to disk");
     }
     // Partial-coverage candidates report correct consumed for host chaining.
     {

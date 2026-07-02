@@ -341,24 +341,36 @@ QueryResult Engine::query(const std::string& rawInput, int maxCandidates) const 
         if (!seen(text, consumed)) out.push_back({text, consumed, user});
     };
 
-    // 1. Learned phrases matching the full input exactly.
+    // 1. Learned phrases covering the entire input (exact key, alternative
+    //    segmentation, or completion of the final syllable) get adaptive
+    //    placement: first use ranks just below the best natural candidate;
+    //    from the second use on they take the top spot. Collected here,
+    //    placed during assembly below.
+    struct UserHit {
+        std::string text;
+        long count = 0;
+        long lastUsed = 0;
+    };
+    std::vector<UserHit> fullUser;
+    auto addFullUser = [&fullUser](const UserEntry& e) {
+        for (auto& h : fullUser) {
+            if (h.text == e.text) {
+                h.count = std::max(h.count, e.count);
+                h.lastUsed = std::max(h.lastUsed, e.lastUsed);
+                return;
+            }
+        }
+        fullUser.push_back({e.text, e.count, e.lastUsed});
+    };
     if (!in.canonicalKey.empty()) {
         auto uit = impl_->userDict.find(in.canonicalKey);
-        if (uit != impl_->userDict.end()) {
-            auto entries = uit->second;
-            std::sort(entries.begin(), entries.end(), [](const UserEntry& a, const UserEntry& b) {
-                if (a.count != b.count) return a.count > b.count;
-                return a.lastUsed > b.lastUsed;
-            });
-            for (const auto& e : entries) push(e.text, in.rawLen, true);
-        }
+        if (uit != impl_->userDict.end())
+            for (const auto& e : uit->second) addFullUser(e);
     }
 
     // 2. Best whole-input conversion (only when it needs >= 2 words).
-    if (!in.canonicalKey.empty()) {
-        std::string sentence = impl_->bestSentence(in);
-        if (!sentence.empty()) push(sentence, in.rawLen, false);
-    }
+    std::string sentence;
+    if (!in.canonicalKey.empty()) sentence = impl_->bestSentence(in);
 
     // 3. Words starting at the beginning of the input, plus completions of the
     //    last partially-typed syllable. Each candidate is ranked by the
@@ -386,6 +398,10 @@ QueryResult Engine::query(const std::string& rawInput, int maxCandidates) const 
     impl_->wordsFrom(in, 0, matches);
     for (const auto& m : matches) {
         int consumed = in.consumedAt(m.end);
+        if (m.userEntry && consumed == in.rawLen) {
+            addFullUser(*m.userEntry);  // whole-input match: adaptive placement
+            continue;
+        }
         double w = m.userEntry ? userLogW(m.userEntry->count)
                                : static_cast<double>(m.rec->logw);
         double score = suf[m.end] > -5e17 ? w - impl_->logTotal + suf[m.end]
@@ -413,12 +429,11 @@ QueryResult Engine::query(const std::string& rawInput, int maxCandidates) const 
             ranked.push_back({std::string(r->text), in.rawLen, false,
                               static_cast<double>(r->logw) - impl_->logTotal});
         // Learned phrases can complete too, with the same syllable-count rule.
+        // They cover the whole input, so they get adaptive placement.
         for (const auto& [k, entries] : impl_->userDict) {
             if (!startsWith(k, prefix) || countSyllables(k) != static_cast<int>(in.segs.size()))
                 continue;
-            for (const auto& e : entries)
-                ranked.push_back({e.text, in.rawLen, true,
-                                  userLogW(e.count) - impl_->logTotal});
+            for (const auto& e : entries) addFullUser(e);
         }
     }
 
@@ -426,9 +441,29 @@ QueryResult Engine::query(const std::string& rawInput, int maxCandidates) const 
         if (a.score != b.score) return a.score > b.score;
         return a.consumed > b.consumed;
     });
-    for (const auto& r : ranked) {
+    std::sort(fullUser.begin(), fullUser.end(), [](const UserHit& a, const UserHit& b) {
+        if (a.count != b.count) return a.count > b.count;
+        return a.lastUsed > b.lastUsed;
+    });
+
+    // Assembly: repeat learned phrases (count >= 2) on top, then the best
+    // natural candidate, then first-time learned phrases, then the rest.
+    std::vector<Candidate> natural;
+    if (!sentence.empty()) natural.push_back({sentence, in.rawLen, false});
+    for (const auto& r : ranked) natural.push_back({r.text, r.consumed, r.user});
+
+    for (const auto& h : fullUser)
+        if (h.count >= 2) push(h.text, in.rawLen, true);
+    size_t ni = 0;
+    if (ni < natural.size()) {
+        push(natural[ni].text, natural[ni].consumed, natural[ni].user);
+        ++ni;
+    }
+    for (const auto& h : fullUser)
+        if (h.count == 1) push(h.text, in.rawLen, true);
+    for (; ni < natural.size(); ++ni) {
         if (static_cast<int>(out.size()) >= maxCandidates) break;
-        push(r.text, r.consumed, r.user);
+        push(natural[ni].text, natural[ni].consumed, natural[ni].user);
     }
     if (static_cast<int>(out.size()) > maxCandidates) out.resize(maxCandidates);
 

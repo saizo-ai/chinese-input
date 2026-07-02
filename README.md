@@ -15,8 +15,11 @@ A pinyin input method for macOS and Windows that respects exactly what you type.
   currently being typed is completed (`zhongg` → 中国). Never predicts extra
   characters beyond what you typed.
 - **Local phrase learning** — every combo you commit is saved *on your
-  machine* (never uploaded) and shown first (marked ★) the next time you type
-  the same pinyin. Delete one permanently from the candidate UI with
+  machine* (never uploaded) and marked ★ in the candidate list. Placement is
+  adaptive: the first time you use a combo it ranks just below the best
+  natural candidate; from the second use on it takes the top spot. Learned
+  phrases matching only part of your input rank by probability alongside
+  dictionary words. Delete one permanently with the ✕ button or
   <kbd>⌃⌫</kbd> (macOS) / <kbd>Ctrl+Del</kbd> (Windows).
 - **Shift toggles 中/英** — tap Shift alone to switch between Chinese and
   English passthrough on both platforms.
