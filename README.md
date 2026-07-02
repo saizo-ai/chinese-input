@@ -29,8 +29,32 @@ A pinyin input method for macOS and Windows that respects exactly what you type.
 - **Shift toggles 中/英** — tap Shift alone to switch between Chinese and
   English passthrough on both platforms.
 
-Downloads: see the [GitHub Pages site](https://omnific9.github.io/chinese-input-site/)
-or grab installers from [Releases](https://github.com/omnific9/chinese-input/releases).
+Downloads: see the [GitHub Pages site](https://saizo-ai.github.io/chinese-input-site/)
+or grab installers from [Releases](https://github.com/saizo-ai/chinese-input/releases).
+
+## How is this different from Sogou (搜狗输入法)?
+
+Sogou optimizes for guessing what you probably meant; ZhiPin refuses to guess
+by design. Concretely:
+
+| | Sogou 搜狗 | 直拼 ZhiPin |
+| --- | --- | --- |
+| Fuzzy pinyin | Configurable (z≈zh, l≈n, in≈ing…) | Never — wrong pinyin gives no candidates |
+| Typo correction | Yes ("hoa" → 好) | No — raw letters stay raw |
+| Prediction | Next-word / whole-phrase / cloud candidates | Only completes the syllable being typed |
+| Language model | Large personalized model + cloud assistance | Local unigram lattice with best-suffix lookahead |
+| Trending words | Cloud lexicons updated constantly | Fixed ~465k dictionary until you rebuild it |
+| Your typing data | Sent to cloud for candidates/sync/telemetry | Never leaves your machine; no network code |
+| Learned phrases | Opaque personal model, account sync | One readable TSV; ★-marked, ✕ to delete an entry |
+| Learning behavior | Continuous reordering based on habits | 1st use → 2nd place, 2nd use → 1st place, partial matches rank by probability |
+| Extras | Skins, voice, translation, ads | Emoji by pinyin name; nothing else |
+| Source | Proprietary (Tencent) | MIT, small enough to read in an afternoon |
+
+Sogou is genuinely better at long-sentence conversion accuracy and fresh
+vocabulary. ZhiPin is better if you value determinism and ownership: the same
+keystrokes always produce the same candidates, nothing is transmitted
+anywhere, and every remembered phrase is a line of text you can see and
+delete.
 
 ## Key bindings
 
