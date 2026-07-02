@@ -3,7 +3,7 @@ BUILD := build
 APP := $(BUILD)/ZhiPin.app
 CORE := ../core/build/libime_core.a
 DICT := ../data/dict.tsv
-VERSION := 0.1.4
+VERSION := 0.1.5
 
 SWIFT_SRCS := ZhiPin/main.swift ZhiPin/Engine.swift ZhiPin/InputController.swift \
               ZhiPin/CandidatePanel.swift

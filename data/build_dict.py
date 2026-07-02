@@ -10,6 +10,7 @@ Output: dict.tsv, lines of "key\ttext\tweight" sorted by key, where key is
 tone-stripped pinyin syllables joined by apostrophes (u-umlaut written as v).
 """
 
+import json
 import re
 import sys
 import unicodedata
@@ -22,6 +23,14 @@ MAX_SYLLABLES = 10
 DEFAULT_CHAR_WEIGHT = 10
 DEFAULT_PHRASE_WEIGHT = 2
 SECONDARY_READING_DIVISOR = 4
+# Emoji rank as mid-tier words: on the first page for their exact name, but
+# below the hanzi word of the same pinyin (most words we care about beat 120).
+EMOJI_WEIGHT = 120
+# CLDR keywords shared by more than this many emoji (脸, 手, …) are too
+# generic to be useful candidates and are dropped.
+EMOJI_MAX_KEYWORD_SPREAD = 8
+# At most this many emoji per pinyin key, so smileys don't flood the page.
+EMOJI_MAX_PER_KEY = 3
 
 # Interjection "syllables" that would poison segmentation ("n" would make the
 # input "n" parse as complete and kill single-letter completion).
@@ -76,6 +85,8 @@ def main() -> None:
     freq = load_jieba_freq()
     entries: dict[tuple[str, str], int] = {}  # (key, text) -> weight
     valid_syllables: set[str] = set()
+    char_primary: dict[str, str] = {}  # char -> most common reading
+    phrase_keys: dict[str, str] = {}  # word -> pinyin key (curated readings)
 
     # --- single characters ---
     n_chars = 0
@@ -95,6 +106,7 @@ def main() -> None:
             if not readings:
                 continue
             base = freq.get(ch, DEFAULT_CHAR_WEIGHT)
+            char_primary[ch] = readings[0]
             seen: set[str] = set()
             for i, r in enumerate(readings):
                 if r in seen:
@@ -128,17 +140,69 @@ def main() -> None:
                 n_dropped += 1
                 continue
             w = freq.get(word, DEFAULT_PHRASE_WEIGHT)
+            phrase_keys[word] = "'".join(syls)
             for key_syls in syllable_aliases(syls):
                 k = ("'".join(key_syls), word)
                 entries[k] = max(entries.get(k, 0), w)
             n_phrases += 1
+
+    # --- emoji (typed via the pinyin of their Chinese CLDR names) ---
+    n_emoji = 0
+    emoji_path = RAW / "emoji_zh.json"
+    if emoji_path.exists():
+        ann = json.load(open(emoji_path, encoding="utf-8"))["annotations"]["annotations"]
+
+        def keywords(names: dict) -> list[str]:
+            kws = list(names.get("tts", [])) + list(names.get("default", []))
+            return [k for k in kws if 1 <= len(k) <= 5 and all(is_cjk(c) for c in k)]
+
+        # Drop keywords shared by many emoji (脸, 手, 笑...) — too generic.
+        spread: dict[str, int] = {}
+        for names in ann.values():
+            for kw in set(keywords(names)):
+                spread[kw] = spread.get(kw, 0) + 1
+
+        def kw_key(kw: str) -> str | None:
+            if kw in phrase_keys:
+                return phrase_keys[kw]
+            if all(c in char_primary for c in kw):
+                return "'".join(char_primary[c] for c in kw)
+            return None
+
+        emoji_per_key: dict[str, int] = {}
+        emoji_added: set[str] = set()
+
+        def add_emoji(emoji: str, kws: list[str]) -> None:
+            for kw in dict.fromkeys(kws):  # unique, keep order
+                if spread.get(kw, 0) > EMOJI_MAX_KEYWORD_SPREAD:
+                    continue
+                key = kw_key(kw)
+                if not key:
+                    continue
+                k = (key, emoji)
+                if k not in entries and emoji_per_key.get(key, 0) >= EMOJI_MAX_PER_KEY:
+                    continue
+                if k not in entries:
+                    emoji_per_key[key] = emoji_per_key.get(key, 0) + 1
+                entries[k] = max(entries.get(k, 0), EMOJI_WEIGHT)
+                emoji_added.add(emoji)
+
+        # Canonical names claim the per-key slots before mere keywords do
+        # (火箭 should yield 🚀 before it yields 🧑‍🚀).
+        for emoji, names in ann.items():
+            add_emoji(emoji, keywords({"tts": names.get("tts", [])}))
+        for emoji, names in ann.items():
+            add_emoji(emoji, keywords(names))
+        n_emoji = len(emoji_added)
+    else:
+        print("emoji_zh.json missing; run fetch.sh (skipping emoji)", file=sys.stderr)
 
     with open(OUT, "w", encoding="utf-8") as f:
         for (key, text), w in sorted(entries.items()):
             f.write(f"{key}\t{text}\t{w}\n")
 
     print(
-        f"chars={n_chars} phrases={n_phrases} dropped={n_dropped} "
+        f"chars={n_chars} phrases={n_phrases} emoji={n_emoji} dropped={n_dropped} "
         f"entries={len(entries)} syllables={len(valid_syllables)} -> {OUT}",
         file=sys.stderr,
     )

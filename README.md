@@ -7,6 +7,11 @@ A pinyin input method for macOS and Windows that respects exactly what you type.
   letters back.
 - **Word & sentence conversion** — up to 10 characters per composition,
   converted over a ~465k-entry dictionary with corpus frequencies.
+- **Emoji by name** — ~1,800 emoji are typed via the pinyin of their Chinese
+  names (from Unicode CLDR): `weixiao` → 😊, `huojian` → 🚀, `xigua` → 🍉.
+  They rank just below the hanzi word of the same pinyin, at most 3 per key.
+  (Windows candidate window may draw some emoji monochrome — GDI limitation —
+  but the committed text is always the real emoji.)
 - **Probability-ranked candidates** — every candidate is scored by
   log P(candidate) + log P(best reading of the rest of your input) over a
   unigram word lattice, recomputed at each step of a chained composition. A
