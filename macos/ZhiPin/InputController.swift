@@ -47,6 +47,9 @@ class ZhiPinInputController: IMKInputController {
         let mods = event.modifierFlags.intersection([.command, .control, .option, .function])
         let keyCode = event.keyCode
         let chars = event.charactersIgnoringModifiers ?? ""
+        // For punctuation use .characters: IMK-delivered events don't reliably
+        // apply Shift in charactersIgnoringModifiers (Shift+; must map as ":").
+        let typed = event.characters ?? chars
 
         // ⌃⌫ permanently deletes the highlighted learned phrase.
         if composing && keyCode == 51 && mods == .control {
@@ -65,7 +68,7 @@ class ZhiPinInputController: IMKInputController {
                 refresh(client: client)
                 return true
             }
-            if let mapped = mapPunctuation(chars) {
+            if let mapped = mapPunctuation(typed) {
                 client.insert(mapped)
                 return true
             }
@@ -137,7 +140,7 @@ class ZhiPinInputController: IMKInputController {
             }
             return true
         }
-        if let mapped = mapPunctuation(String(ch)) {
+        if let mapped = mapPunctuation(typed) {
             // Commit the highlighted candidate (and any tail as typed), then punctuate.
             commitHighlightedThenRest(client: client)
             client.insert(mapped)
